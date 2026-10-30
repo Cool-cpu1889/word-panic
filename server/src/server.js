@@ -155,6 +155,7 @@ function publicRoom(room) {
       streak: player.streak,
       lastComboBonus: player.lastComboBonus,
       hints: player.hints,
+
       revealedWord:
         room.status === "playing"
           ? room.word
@@ -175,6 +176,10 @@ function publicRoom(room) {
     roundEndsAt: room.roundEndsAt,
     resultsEndsAt: room.resultsEndsAt,
     remainingMs: room.remainingMs,
+
+    // Used by clients to synchronize their countdown clocks.
+    serverNow: Date.now(),
+
     message: room.message
   };
 }
@@ -204,6 +209,8 @@ function finishGame(room, message = "All 15 rounds completed!") {
   room.resumeStatus = null;
 
   updateRoom(room);
+
+  console.log(`[${room.code}] Game finished.`);
 }
 
 function startRound(room) {
@@ -245,13 +252,24 @@ function startRound(room) {
     player.revealedLetters = [];
   });
 
+  const thisRound = room.round;
+
   console.log(
-    `[${room.code}] Round ${room.round}/${TOTAL_ROUNDS} — ${room.difficulty}`
+    `[${room.code}] Round ${thisRound}/${TOTAL_ROUNDS} started — ${room.difficulty}`
   );
 
   updateRoom(room);
 
   room.timer = setTimeout(() => {
+    // Ignore an old timer if the room has moved to another round.
+    if (
+      !rooms.has(room.code) ||
+      room.status !== "playing" ||
+      room.round !== thisRound
+    ) {
+      return;
+    }
+
     finishRound(room);
   }, ROUND_TIME_MS);
 }
@@ -263,6 +281,8 @@ function finishRound(room) {
 
   clearRoomTimer(room);
 
+  const completedRound = room.round;
+
   room.status = "results";
   room.revealedAnswer = room.word.toUpperCase();
   room.roundEndsAt = null;
@@ -270,12 +290,27 @@ function finishRound(room) {
   room.remainingMs = null;
   room.message = `Round ${room.round} completed!`;
 
+  console.log(
+    `[${room.code}] Round ${completedRound} finished. Results timer: ${RESULTS_TIME_MS}ms`
+  );
+
   updateRoom(room);
 
   room.timer = setTimeout(() => {
-    if (!rooms.has(room.code) || room.status !== "results") {
+    if (
+      !rooms.has(room.code) ||
+      room.status !== "results" ||
+      room.round !== completedRound
+    ) {
+      console.log(
+        `[${room.code}] Next-round timer cancelled or state changed.`
+      );
       return;
     }
+
+    console.log(
+      `[${room.code}] Results timer completed. Moving on from round ${completedRound}.`
+    );
 
     if (room.round >= TOTAL_ROUNDS) {
       finishGame(room);
@@ -291,6 +326,7 @@ function pauseForSoloChoice(room) {
   clearRoomTimer(room);
 
   room.resumeStatus = room.status;
+
   room.remainingMs =
     room.status === "playing"
       ? Math.max(0, (room.roundEndsAt || Date.now()) - Date.now())
@@ -324,10 +360,19 @@ function resumeSavedGame(room, solo = false) {
 
   if (previousStatus === "results") {
     room.resultsEndsAt = Date.now() + remaining;
+
     updateRoom(room);
 
+    const savedRound = room.round;
+
     room.timer = setTimeout(() => {
-      if (!rooms.has(room.code) || room.status !== "results") return;
+      if (
+        !rooms.has(room.code) ||
+        room.status !== "results" ||
+        room.round !== savedRound
+      ) {
+        return;
+      }
 
       if (room.round >= TOTAL_ROUNDS) {
         finishGame(room);
@@ -344,7 +389,17 @@ function resumeSavedGame(room, solo = false) {
 
   updateRoom(room);
 
+  const savedRound = room.round;
+
   room.timer = setTimeout(() => {
+    if (
+      !rooms.has(room.code) ||
+      room.status !== "playing" ||
+      room.round !== savedRound
+    ) {
+      return;
+    }
+
     finishRound(room);
   }, remaining);
 }
@@ -434,6 +489,8 @@ function removePlayer(disconnectedSocket) {
 }
 
 io.on("connection", (socket) => {
+  console.log(`[Socket] Connected: ${socket.id}`);
+
   socket.on("createRoom", ({ name } = {}) => {
     name = String(name || "").trim().slice(0, 18);
 
@@ -487,6 +544,8 @@ io.on("connection", (socket) => {
 
     socket.emit("roomCreated", { code });
     updateRoom(room);
+
+    console.log(`[${code}] Room created by ${name}.`);
   });
 
   socket.on("joinRoom", ({ code, name } = {}) => {
@@ -536,6 +595,8 @@ io.on("connection", (socket) => {
     socket.join(code);
     socket.data.roomCode = code;
 
+    console.log(`[${code}] ${name} joined.`);
+
     if (wasPaused) {
       resumeSavedGame(room, false);
     } else {
@@ -573,6 +634,8 @@ io.on("connection", (socket) => {
     room.round = 0;
     room.totalRounds = TOTAL_ROUNDS;
     room.gameWords = createGameWordSet(room);
+
+    console.log(`[${room.code}] Game started.`);
 
     startRound(room);
   });
@@ -624,7 +687,6 @@ io.on("connection", (socket) => {
       player.lastPoints = points;
       player.lastComboBonus = comboBonus;
 
-      // Award one hint for every correct answer.
       player.hints = (player.hints || 0) + 1;
 
       socket.emit("hintEarned", {
@@ -659,17 +721,27 @@ io.on("connection", (socket) => {
     updateRoom(room);
   });
 
-  // Spend one hint and reveal one unrevealed correct letter.
   socket.on("useHint", () => {
     const room = rooms.get(socket.data.roomCode);
 
-    if (!room || room.status !== "playing") return;
+    if (!room || room.status !== "playing") {
+      socket.emit("errorMessage", "The round is not active.");
+      return;
+    }
 
     const player = room.players.find(
       (item) => item.id === socket.id
     );
 
-    if (!player || player.answered) return;
+    if (!player) {
+      socket.emit("errorMessage", "Player not found in this room.");
+      return;
+    }
+
+    if (player.answered) {
+      socket.emit("errorMessage", "You have already submitted your answer.");
+      return;
+    }
 
     if (Date.now() >= room.roundEndsAt) {
       finishRound(room);
@@ -699,6 +771,15 @@ io.on("connection", (socket) => {
 
     player.hints -= 1;
     player.revealedLetters = [...revealed, position];
+
+    console.log(
+      `[${room.code}] ${player.name} used a hint. Remaining: ${player.hints}`
+    );
+
+    socket.emit("hintUsed", {
+      hints: player.hints,
+      revealedPosition: position
+    });
 
     updateRoom(room);
   });
@@ -749,6 +830,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
+    console.log(`[Socket] Disconnected: ${socket.id}`);
     removePlayer(socket);
   });
 });

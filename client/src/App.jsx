@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { io } from "socket.io-client";
 import "./App.css";
@@ -50,6 +49,8 @@ export default function App() {
   const [seconds, setSeconds] = useState(30);
   const [connected, setConnected] = useState(false);
 
+  const [serverTimeOffset, setServerTimeOffset] = useState(0);
+
   const [showHowToPlay, setShowHowToPlay] = useState(true);
   const [levelIntro, setLevelIntro] = useState(null);
   const [hintEarnedPopup, setHintEarnedPopup] = useState(false);
@@ -67,13 +68,22 @@ export default function App() {
         round: data.round,
         totalRounds: data.totalRounds,
         difficulty: data.difficulty,
-        revealedAnswer: data.revealedAnswer
+        revealedAnswer: data.revealedAnswer,
+        serverNow: data.serverNow
       });
+
+      if (typeof data.serverNow === "number") {
+        setServerTimeOffset(data.serverNow - Date.now());
+      }
 
       setRoom(data);
     };
 
-    const onError = (message) => setError(message);
+    const onError = (message) => {
+      setError(message);
+      setFeedback(message);
+      setFeedbackType("error");
+    };
 
     const onResult = (result) => {
       setFeedback(result.message);
@@ -88,6 +98,11 @@ export default function App() {
       }, 1800);
     };
 
+    const onHintUsed = (data) => {
+      setFeedback(`Hint used! ${data.hints} hints remaining.`);
+      setFeedbackType("success");
+    };
+
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
     socket.on("roomCreated", onCreated);
@@ -95,6 +110,7 @@ export default function App() {
     socket.on("errorMessage", onError);
     socket.on("answerResult", onResult);
     socket.on("hintEarned", onHintEarned);
+    socket.on("hintUsed", onHintUsed);
 
     return () => {
       socket.off("connect", onConnect);
@@ -104,6 +120,7 @@ export default function App() {
       socket.off("errorMessage", onError);
       socket.off("answerResult", onResult);
       socket.off("hintEarned", onHintEarned);
+      socket.off("hintUsed", onHintUsed);
       socket.disconnect();
     };
   }, []);
@@ -147,7 +164,7 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [room?.round, room?.status, room?.difficulty]);
 
-  // Countdown synced to the server's round end time.
+  // Countdown synchronized with the server clock.
   useEffect(() => {
     if (!room || room.status !== "playing" || !room.roundEndsAt) {
       setSeconds(30);
@@ -155,10 +172,14 @@ export default function App() {
     }
 
     const updateTime = () => {
+      const estimatedServerTime = Date.now() + serverTimeOffset;
+
       setSeconds(
         Math.max(
           0,
-          Math.ceil((room.roundEndsAt - Date.now()) / 1000)
+          Math.ceil(
+            (room.roundEndsAt - estimatedServerTime) / 1000
+          )
         )
       );
     };
@@ -166,8 +187,9 @@ export default function App() {
     updateTime();
 
     const timer = setInterval(updateTime, 200);
+
     return () => clearInterval(timer);
-  }, [room?.roundEndsAt, room?.status]);
+  }, [room?.roundEndsAt, room?.status, serverTimeOffset]);
 
   function createRoom() {
     setError("");
@@ -220,11 +242,35 @@ export default function App() {
   }
 
   function useHint() {
-    if (!room || room.status !== "playing") return;
-    if (!me || me.answered || (me.hints || 0) <= 0) return;
-    if (seconds <= 0) return;
+    if (!room || room.status !== "playing") {
+      setError("The round is not active.");
+      return;
+    }
+
+    if (!me) {
+      setError("Player information not found. Rejoin the room.");
+      return;
+    }
+
+    if (me.answered) {
+      setError("You have already submitted your answer.");
+      return;
+    }
+
+    if ((me.hints || 0) <= 0) {
+      setError("You have no hints remaining.");
+      return;
+    }
+
+    if (seconds <= 0) {
+      setError("Time is up!");
+      return;
+    }
 
     setError("");
+    setFeedback("Requesting hint...");
+    setFeedbackType("");
+
     socket.emit("useHint");
   }
 
