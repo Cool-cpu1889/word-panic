@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { useCallback, useEffect, useRef, useState } from "react";
 import "./AudioControls.css";
 
@@ -261,8 +262,8 @@ export default function AudioControls({ socket, room, seconds }) {
     }
   }, [room?.status, room?.round, room?.roundEndsAt, seconds]);
 
-  return (
-    <div className="audio-widget">
+return createPortal(
+  <div className="audio-widget">
       <div className="audio-buttons">
         <button
           type="button"
@@ -284,7 +285,9 @@ export default function AudioControls({ socket, room, seconds }) {
         >
           ⚙
         </button>
-      </div>
+       </div>,
+  document.body
+);
 
       {settingsOpen && (
         <div className="audio-panel">
