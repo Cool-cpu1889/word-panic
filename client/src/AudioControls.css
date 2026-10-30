@@ -1,10 +1,12 @@
 
 .audio-widget {
-  position: fixed;
-  right: 20px;
-  bottom: 20px;
-  z-index: 99999;
-  font-family: inherit;
+  position: absolute !important;
+  top: 120px !important;
+  right: 80px !important;
+  bottom: auto !important;
+  left: auto !important;
+  z-index: 999999 !important;
+  width: max-content;
 }
 
 .audio-buttons {
@@ -20,10 +22,7 @@
   border: 1px solid rgba(255, 255, 255, 0.14);
   color: #f5f7fb;
   cursor: pointer;
-  transition:
-    background 0.2s ease,
-    border-color 0.2s ease,
-    transform 0.2s ease;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 }
 
 .audio-toggle {
@@ -133,7 +132,6 @@
     opacity: 0;
     transform: translateY(6px);
   }
-
   to {
     opacity: 1;
     transform: translateY(0);
@@ -142,8 +140,8 @@
 
 @media (max-width: 600px) {
   .audio-widget {
-    right: 12px;
-    bottom: 12px;
+    top: 12px !important;
+    right: 80px !important;
   }
 
   .audio-toggle {

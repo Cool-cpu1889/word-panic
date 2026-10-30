@@ -336,7 +336,9 @@ export default function App() {
 
   return (
     <main className="page">
-      <AudioControls socket={socket} room={room} seconds={seconds} />
+      {!showHowToPlay && (
+  <AudioControls socket={socket} room={room} seconds={seconds} />
+)}
 
       {/* HINT EARNED POPUP */}
       {hintEarnedPopup && (

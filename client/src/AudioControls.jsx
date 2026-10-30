@@ -28,7 +28,6 @@ export default function AudioControls({ socket, room, seconds }) {
   const timeoutRoundRef = useRef(null);
   const playSfxRef = useRef(() => {});
 
-  // Create the audio players once.
   useEffect(() => {
     const players = {};
 
@@ -37,11 +36,8 @@ export default function AudioControls({ socket, room, seconds }) {
       audio.preload = name === "bgm" ? "auto" : "metadata";
       audio.volume = name === "bgm" ? 0.2 : 0.65;
 
-      if (name === "bgm") {
-        audio.loop = true;
-      }
+      if (name === "bgm") audio.loop = true;
 
-      // Avoid unhandled playback errors if an asset is missing.
       audio.addEventListener("error", () => {
         console.warn(`Word Panic audio unavailable: ${source}`);
       });
@@ -66,43 +62,31 @@ export default function AudioControls({ socket, room, seconds }) {
     if (!audioEnabledRef.current) return;
 
     const audio = audioRef.current[name];
-
     if (!audio || name === "bgm") return;
 
-    // Restart a short effect if it is triggered again.
     audio.pause();
     audio.currentTime = 0;
     audio.volume = sfxVolumeRef.current / 100;
 
-    audio.play().catch(() => {
-      // The browser may block playback until the user interacts.
-    });
+    audio.play().catch(() => {});
   }, []);
 
   useEffect(() => {
     playSfxRef.current = playSfx;
   }, [playSfx]);
 
-  // Keep the BGM volume up to date.
   useEffect(() => {
     musicVolumeRef.current = musicVolume;
-
     const bgm = audioRef.current.bgm;
-
-    if (bgm) {
-      bgm.volume = musicVolume / 100;
-    }
+    if (bgm) bgm.volume = musicVolume / 100;
   }, [musicVolume]);
 
-  // Keep the SFX volume up to date.
   useEffect(() => {
     sfxVolumeRef.current = sfxVolume;
   }, [sfxVolume]);
 
-  // Start or pause music according to the user's choice and game state.
   useEffect(() => {
     const bgm = audioRef.current.bgm;
-
     if (!bgm) return;
 
     const shouldPlay =
@@ -113,16 +97,12 @@ export default function AudioControls({ socket, room, seconds }) {
 
     if (shouldPlay) {
       bgm.volume = musicVolume / 100;
-
-      bgm.play().catch(() => {
-        // The user can press AUDIO again if autoplay is blocked.
-      });
+      bgm.play().catch(() => {});
     } else {
       bgm.pause();
     }
   }, [audioEnabled, musicVolume, room?.status]);
 
-  // The master audio button is a user gesture, allowing BGM to start.
   function toggleAudio() {
     const nextEnabled = !audioEnabledRef.current;
 
@@ -151,14 +131,10 @@ export default function AudioControls({ socket, room, seconds }) {
       room?.status !== "finished"
     ) {
       bgm.volume = musicVolumeRef.current / 100;
-
-      bgm.play().catch(() => {
-        // Music can be started again by pressing AUDIO.
-      });
+      bgm.play().catch(() => {});
     }
   }
 
-  // Play a sound when the server confirms an answer.
   useEffect(() => {
     if (!socket) return;
 
@@ -168,12 +144,9 @@ export default function AudioControls({ socket, room, seconds }) {
 
     socket.on("answerResult", onAnswerResult);
 
-    return () => {
-      socket.off("answerResult", onAnswerResult);
-    };
+    return () => socket.off("answerResult", onAnswerResult);
   }, [socket]);
 
-  // React to round and match transitions, not every room update.
   useEffect(() => {
     const previous = previousRoomRef.current;
 
@@ -198,10 +171,7 @@ export default function AudioControls({ socket, room, seconds }) {
       }
     }
 
-    if (
-      room.status === "finished" &&
-      previous.status !== "finished"
-    ) {
+    if (room.status === "finished" && previous.status !== "finished") {
       const players = room.players || [];
       const highestScore = Math.max(
         0,
@@ -216,9 +186,7 @@ export default function AudioControls({ socket, room, seconds }) {
         (player) => player.id === socket?.id
       );
 
-      if (currentPlayerWon) {
-        playSfxRef.current("victory");
-      }
+      if (currentPlayerWon) playSfxRef.current("victory");
     }
 
     previousRoomRef.current = {
@@ -227,15 +195,12 @@ export default function AudioControls({ socket, room, seconds }) {
     };
   }, [room, socket]);
 
-  // Play at most one tick per second during the final five seconds.
   useEffect(() => {
     if (
       room?.status !== "playing" ||
       seconds < 1 ||
       seconds > 5
-    ) {
-      return;
-    }
+    ) return;
 
     const tickKey = `${room.round}-${seconds}`;
 
@@ -245,16 +210,13 @@ export default function AudioControls({ socket, room, seconds }) {
     }
   }, [room?.status, room?.round, seconds]);
 
-  // Play the timeout effect once when the server's round actually expires.
   useEffect(() => {
     if (
       room?.status !== "playing" ||
       seconds !== 0 ||
       !room.roundEndsAt ||
       room.roundEndsAt > Date.now()
-    ) {
-      return;
-    }
+    ) return;
 
     if (timeoutRoundRef.current !== room.round) {
       timeoutRoundRef.current = room.round;
@@ -262,8 +224,8 @@ export default function AudioControls({ socket, room, seconds }) {
     }
   }, [room?.status, room?.round, room?.roundEndsAt, seconds]);
 
-return createPortal(
-  <div className="audio-widget">
+  const audioWidget = (
+    <div className="audio-widget">
       <div className="audio-buttons">
         <button
           type="button"
@@ -285,9 +247,7 @@ return createPortal(
         >
           ⚙
         </button>
-       </div>,
-  document.body
-);
+      </div>
 
       {settingsOpen && (
         <div className="audio-panel">
@@ -318,9 +278,7 @@ return createPortal(
             max="100"
             step="5"
             value={musicVolume}
-            onChange={(event) =>
-              setMusicVolume(Number(event.target.value))
-            }
+            onChange={(event) => setMusicVolume(Number(event.target.value))}
             aria-label="Background music volume"
           />
 
@@ -335,9 +293,7 @@ return createPortal(
             max="100"
             step="5"
             value={sfxVolume}
-            onChange={(event) =>
-              setSfxVolume(Number(event.target.value))
-            }
+            onChange={(event) => setSfxVolume(Number(event.target.value))}
             aria-label="Sound effects volume"
           />
 
@@ -349,4 +305,6 @@ return createPortal(
       )}
     </div>
   );
+
+  return createPortal(audioWidget, document.body);
 }
