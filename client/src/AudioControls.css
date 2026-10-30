@@ -1,8 +1,9 @@
+
 .audio-widget {
   position: fixed;
   right: 20px;
   bottom: 20px;
-  z-index: 1500;
+  z-index: 99999;
   font-family: inherit;
 }
 
