@@ -140,24 +140,37 @@
 
 @media (max-width: 600px) {
   .audio-widget {
-    top: 12px !important;
-    right: 80px !important;
+    top: 70px !important;
+    right: 35px !important; /* ૨૦px માંથી ૪૦px કર્યું, જેથી બટન ડાબી બાજુ ખસે */
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 5px !important;
   }
 
   .audio-toggle {
-    padding: 10px 12px;
-    font-size: 10px;
+    padding: 1px 2px; /* પેડિંગ હજી ઓછું કર્યું જેથી બટન વધુ નાનું થાય */
+    font-size: 10px; /* અક્ષરો હજી થોડા નાના કર્યા */
+    white-space: nowrap;
   }
 
   .audio-settings-button {
-    width: 38px;
-    height: 38px;
+    width: 40px;  /* સેટિંગ્સ આઈકોન ૩૨px માંથી ૨8px કર્યો */
+    height: 40px; /* સેટિંગ્સ આઈકોન ૩૨px માંથી ૨૮px કર્યો */
+    flex-shrink: 0;
+  }
+
+  /* જો ઓડિયો બટનની અંદર સ્પીકરનો SVG આઈકોન હોય, તો તેને પણ નાનો કરવા માટે */
+  .audio-toggle svg {
+    width: 10px !important;
+    height: 10px !important;
   }
 
   .audio-panel {
     padding: 15px;
   }
 }
+
 
 @media (prefers-reduced-motion: reduce) {
   .audio-panel {
