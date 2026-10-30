@@ -1,0 +1,172 @@
+.audio-widget {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 1500;
+  font-family: inherit;
+}
+
+.audio-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.audio-toggle,
+.audio-settings-button,
+.audio-close {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #f5f7fb;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.audio-toggle {
+  padding: 11px 15px;
+  border-radius: 12px;
+  background: #202b3b;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+}
+
+.audio-toggle:hover,
+.audio-settings-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.audio-active {
+  background: #176b52;
+  border-color: #2baf83;
+}
+
+.audio-settings-button {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: #202b3b;
+  font-size: 19px;
+}
+
+.audio-panel {
+  width: min(300px, calc(100vw - 32px));
+  margin-bottom: 10px;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  background: #111a27;
+  color: #f5f7fb;
+  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.4);
+  animation: audioPanelIn 0.18s ease-out;
+}
+
+.audio-panel-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.audio-panel-heading strong {
+  display: block;
+  font-size: 15px;
+}
+
+.audio-panel-heading p {
+  margin: 5px 0 0;
+  color: #aab5c5;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.audio-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: #202b3b;
+  font-size: 21px;
+  line-height: 1;
+}
+
+.audio-slider-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 16px 0 9px;
+  color: #e4eaf3;
+  font-size: 12px;
+}
+
+.audio-slider-label strong {
+  color: #70c7ff;
+  font-variant-numeric: tabular-nums;
+}
+
+.audio-panel input[type="range"] {
+  display: block;
+  width: 100%;
+  margin: 0;
+  accent-color: #55b5f5;
+  cursor: pointer;
+}
+
+.audio-note {
+  margin: 18px 0 0;
+  color: #9ba8ba;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+@keyframes audioPanelIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 600px) {
+  .audio-widget {
+    right: 12px;
+    bottom: 12px;
+  }
+
+  .audio-toggle {
+    padding: 10px 12px;
+    font-size: 10px;
+  }
+
+  .audio-settings-button {
+    width: 38px;
+    height: 38px;
+  }
+
+  .audio-panel {
+    padding: 15px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .audio-panel {
+    animation: none;
+  }
+
+  .audio-toggle,
+  .audio-settings-button {
+    transition: none;
+  }
+}
